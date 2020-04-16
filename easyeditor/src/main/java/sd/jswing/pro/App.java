@@ -1,44 +1,35 @@
 package sd.jswing.pro;
 
-import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Image;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.filechooser.FileSystemView;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 
 import sd.jswing.pro.common.Constants;
 import sd.jswing.pro.common.DialogUtils;
-import sd.jswing.pro.common.FileUtils;
-import sd.jswing.pro.component.MyJTextArea;
+import sd.jswing.pro.component.MyJFrame;
+import sd.jswing.pro.component.MyJTextPane;
 
 /**
  * Hello world!
  *
  */
 public class App 
-{
-	
+{	
 	public static void main(String[] args) {
 		//此处处于 主线程 提交任务到 事件调度线程 创建窗口
 		SwingUtilities.invokeLater(new Runnable() {
@@ -53,18 +44,15 @@ public class App
 	}
 	
 	public static void createGUI() {
-		//此处属于 时间调度线程
-		JFrame jf = new JFrame("记吧笔记本");
-		jf.setSize(new Dimension(1000, 800));
 		
-		jf.setLocationRelativeTo(null);
-		jf.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-		jf.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {
-				closeWindow(jf);
-			}
-		});
+		try {
+			//設置window風格
+			UIManager.setLookAndFeel("com.sun.java.swing.plaf.windows.WindowsLookAndFeel");
+		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
+				| UnsupportedLookAndFeelException e1) {
+		}
+		//此处属于 时间调度线程
+		MyJFrame jf = new MyJFrame();
 		//创建菜单栏
 		createMenuBar(jf);
 		//创建滚动内容版
@@ -74,15 +62,18 @@ public class App
 	}
 	
 	//创建内容面板
-	public static void createJScrollAreaText(JFrame pFrame) {
-		
-		MyJTextArea text = new MyJTextArea();
+	public static void createJScrollAreaText(MyJFrame pFrame) {
+		Image icon = Toolkit.getDefaultToolkit().getImage(pFrame.getClass().getResource("/images/logo.gif"));
+		pFrame.setIconImage(icon);
+		MyJTextPane text = new MyJTextPane();
 		JScrollPane pane = new JScrollPane( 
 				text,
 				ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, //垂直滚动条的显示策略
-				ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER); //水平滚动条的显示策略
+				ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED); //水平滚动条的显示策略
 		
 		pFrame.setContentPane(pane); //设置到窗口
+		pFrame.setjTextPane(text);
+		//text.insertIcon(new ImageIcon("E:\\我的照片\\绝对领域\\003.jpg"));
 		//添加键盘监听事件
 		text.addKeyListener(new KeyListener() {
 			//有字符输入触发
@@ -90,6 +81,7 @@ public class App
 			public void keyTyped(KeyEvent e) {
 				// TODO Auto-generated method stub
 				//System.out.println(e.getKeyCode());
+				pFrame.getjTextPane().setChange(true);
 			}
 			//按键弹起触发
 			@Override
@@ -104,10 +96,14 @@ public class App
 					if(e.getKeyCode() == Constants.KeyCode.KEY_S) {
 						//System.out.println("CTRL+S......");
 						try {
-							showFileSaveDialog(text,pFrame);
+							pFrame.showFileSaveDialog();
 						} catch (Exception e2) {
 							DialogUtils.alertMessage("新建文件异常", pFrame);
 						}
+					}else if(e.getKeyCode() == Constants.KeyCode.KEY_V){
+						//System.out.println("CTRL+V......");
+						//粘貼
+						pFrame.pasteClipboard();
 					}
 				}
 				
@@ -115,86 +111,9 @@ public class App
 		});
 	}
 	
-	//保存编辑文本
-	public static int showFileSaveDialog(MyJTextArea text,Component parent) throws IOException {
-		//创建一个默认的文件选择器
-		FileSystemView  fileSystemView = FileSystemView.getFileSystemView();
-		JFileChooser fileChooser = new JFileChooser();
-		//设置默认打开的路径是 桌面路径
-		fileChooser.setCurrentDirectory(fileSystemView.getHomeDirectory()); 
-		//设置打开文件选择框后,默认输入的名字
-		fileChooser.setSelectedFile(new File("*.note"));
-		//只能选文件 不能选文件夹
-		fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-		//打开选择框线程被阻塞,直到选择框被关闭
-		int result = fileChooser.showSaveDialog(parent);
-		if(result == JFileChooser.APPROVE_OPTION) {
-			//如果点击了保存，则获取选择的保存路径
-			File saveFile = fileChooser.getSelectedFile();
-			//System.out.println(saveFile.getAbsolutePath());
-			String content = text.getText();
-			if(saveFile.exists()) {
-				//System.out.println("文件存在");
-				if(DialogUtils.showConfirmDialog("文件已存在!是否覆盖该文件", parent) == JOptionPane.NO_OPTION) {
-					//否
-					return 0;
-				}
-			}else {
-				try {
-					saveFile.createNewFile();
-				} catch (IOException e) {
-					throw e;
-				}
-			}
-			boolean isSucess =  FileUtils.saveFile(saveFile, content);
-			if(!isSucess) {
-				DialogUtils.alertMessage("保存失败", parent);
-				return 0;
-			}else {
-				text.setChange(false);
-				return 1;
-			}
-		}else {
-			return 0;
-		}
-	}
-	
-	//打开文件你
-	public static int showFileOpenDialog(MyJTextArea textArea,Component parent) throws IOException,FileNotFoundException {
-		//创建默认的文件选择器
-		JFileChooser fileChooser = new JFileChooser();
-		FileSystemView fileSystemView = FileSystemView.getFileSystemView();
-		fileChooser.setCurrentDirectory(fileSystemView.getHomeDirectory());
-		fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-		fileChooser.setMultiSelectionEnabled(false);
-		fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("*.txt,*.note","txt", "note"));
-		fileChooser.setFileFilter(new FileNameExtensionFilter("*.txt,*.note","txt", "note"));
-		// 打开文件选择框（线程将被阻塞, 直到选择框被关闭）
-        int result = fileChooser.showOpenDialog(parent);
 
-        if (result == JFileChooser.APPROVE_OPTION) {
-            // 如果点击了"确定", 则获取选择的文件路径
-            File file = fileChooser.getSelectedFile();
-
-            // 如果允许选择多个文件, 则通过下面方法获取选择的所有文件
-            // File[] files = fileChooser.getSelectedFiles();
-            try {
-            	
-            	//内容处理
-            	textArea.setText(FileUtils.openFile(file));
-			} catch (FileNotFoundException e1) {
-				throw e1;
-			}catch (IOException e2) {
-				throw e2;
-			}
-            return 1;
-        }else {
-        	return 0;
-        }
-	}
-	
 	//创建菜单栏
-	public static void createMenuBar(JFrame pFrame) {
+	public static void createMenuBar(MyJFrame pFrame) {
 		//创建一个菜单栏
 		JMenuBar menuBar = new JMenuBar();
 		pFrame.setJMenuBar(menuBar);
@@ -232,10 +151,10 @@ public class App
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				JScrollPane jScrollPane =  (JScrollPane)pFrame.getContentPane();
-				MyJTextArea text =  (MyJTextArea)jScrollPane.getViewport().getView();
+				MyJTextPane text =  (MyJTextPane)jScrollPane.getViewport().getView();
 				if(null != text) {
 					try {
-						showFileOpenDialog(text,pFrame);
+						pFrame.showFileOpenDialog();
 					} catch (FileNotFoundException e1) {
 						// TODO: handle exception
 						DialogUtils.alertMessage("文件不存在", pFrame);
@@ -253,10 +172,10 @@ public class App
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				JScrollPane jScrollPane =  (JScrollPane)pFrame.getContentPane();
-				MyJTextArea text =  (MyJTextArea)jScrollPane.getViewport().getView();
+				MyJTextPane text =  (MyJTextPane)jScrollPane.getViewport().getView();
 				if(null != text) {
 					try {
-						showFileSaveDialog(text,pFrame);
+						pFrame.showFileSaveDialog();
 					} catch (IOException e2) {
 						DialogUtils.alertMessage("新建文件异常", pFrame);
 					}
@@ -272,7 +191,7 @@ public class App
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				closeWindow(pFrame);
+				pFrame.closeWindow();
 			}
 		});
 		menuFile.add(newItem);
@@ -340,30 +259,6 @@ public class App
 		menuHelp.addSeparator();
 		menuHelp.add(aboutItem);
 		
-
-	}
-	/**
-	 * 关闭窗口
-	 * @param frame
-	 */
-	public static void closeWindow(JFrame frame) {
-		MyJTextArea jTextArea = (MyJTextArea)((JScrollPane)frame.getContentPane()).getViewport().getView();
-		if(jTextArea.isChange()) {
-			int result = DialogUtils.showConfirmDialog("是否保存已改变的内容", frame);
-			if(result == JOptionPane.YES_OPTION) {
-				try {
-					int flag =  showFileSaveDialog(jTextArea, frame);
-					if(flag == 1) {
-						frame.dispose();
-					}
-				} catch (IOException e) {
-					DialogUtils.alertMessage("新建文件异常", frame);
-				}
-			}else {
-				frame.dispose();
-			}
-		}else {
-			frame.dispose();
-		}
+	
 	}
 }

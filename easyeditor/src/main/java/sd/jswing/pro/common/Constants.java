@@ -2,6 +2,10 @@ package sd.jswing.pro.common;
 
 public class Constants {
 	
+	public static final String ENCODING_UTF_8 = "UTF-8";
+	
+	
+	
 	/**
 	 * 字体大小
 	 */
@@ -44,5 +48,11 @@ public class Constants {
 		public static final int NEW = 1;
 		//打开
 		public static final int OPEN = 1;
+	}
+	
+	public static class PictureFormat{
+		public static final String JPG = "jpg";
+		public static final String PNG = "png";
+		public static final String GIF = "gif";
 	}
 }
