@@ -5,15 +5,20 @@ import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.List;
 
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
+import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -21,6 +26,10 @@ import javax.swing.UnsupportedLookAndFeelException;
 
 import sd.jswing.pro.common.Constants;
 import sd.jswing.pro.common.DialogUtils;
+import sd.jswing.pro.common.FileInfo;
+import sd.jswing.pro.common.FileUtils;
+import sd.jswing.pro.common.XmlOpenhistoryUtil;
+import sd.jswing.pro.component.HistoryMenuItem;
 import sd.jswing.pro.component.MyJFrame;
 import sd.jswing.pro.component.MyJTextPane;
 
@@ -31,19 +40,30 @@ import sd.jswing.pro.component.MyJTextPane;
 public class App 
 {	
 	public static void main(String[] args) {
+		
 		//此处处于 主线程 提交任务到 事件调度线程 创建窗口
 		SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
 				// TODO Auto-generated method stub
 				//此处属于时间调度线程
-				createGUI();			
+				if(args.length>0) {
+					File file = new File(args[0]);
+					if(!file.getAbsolutePath().endsWith(".txt")
+							&& !file.getAbsolutePath().endsWith(".note")) {
+						DialogUtils.alertMessage("打开文件格式不对", null);
+					}else {
+						createGUI(file);	
+					}
+				}else {
+					createGUI(null);	
+				}
 			}
 			
 		});
 	}
 	
-	public static void createGUI() {
+	public static void createGUI(File file) {
 		
 		try {
 			//設置window風格
@@ -53,13 +73,16 @@ public class App
 		}
 		//此处属于 时间调度线程
 		MyJFrame jf = new MyJFrame();
+		jf.setOpenHisttoryFile(XmlOpenhistoryUtil.loadXmlFile());
 		//创建菜单栏
 		createMenuBar(jf);
 		//创建滚动内容版
+		jf.setTargetFile(file);
 		createJScrollAreaText(jf);
 		
 		jf.setVisible(true);
 	}
+	
 	
 	//创建内容面板
 	public static void createJScrollAreaText(MyJFrame pFrame) {
@@ -73,7 +96,11 @@ public class App
 		
 		pFrame.setContentPane(pane); //设置到窗口
 		pFrame.setjTextPane(text);
-		//text.insertIcon(new ImageIcon("E:\\我的照片\\绝对领域\\003.jpg"));
+		try {
+			pFrame.readTargetFile(pFrame.getTargetFile());
+		} catch (IOException e1) {
+			DialogUtils.alertMessage("文件读取失败", pFrame);
+		}
 		//添加键盘监听事件
 		text.addKeyListener(new KeyListener() {
 			//有字符输入触发
@@ -81,7 +108,9 @@ public class App
 			public void keyTyped(KeyEvent e) {
 				// TODO Auto-generated method stub
 				//System.out.println(e.getKeyCode());
-				pFrame.getjTextPane().setChange(true);
+				if (e.getModifiers() != 2) {
+					pFrame.getjTextPane().setChange(true);
+				}
 			}
 			//按键弹起触发
 			@Override
@@ -93,14 +122,7 @@ public class App
 			public void keyPressed(KeyEvent e) {
 				//System.out.println(e.getKeyCode());
 				if (e.getModifiers() == 2) {
-					if(e.getKeyCode() == Constants.KeyCode.KEY_S) {
-						//System.out.println("CTRL+S......");
-						try {
-							pFrame.showFileSaveDialog();
-						} catch (Exception e2) {
-							DialogUtils.alertMessage("新建文件异常", pFrame);
-						}
-					}else if(e.getKeyCode() == Constants.KeyCode.KEY_V){
+					if(e.getKeyCode() == Constants.KeyCode.KEY_V){
 						//System.out.println("CTRL+V......");
 						//粘貼
 						pFrame.pasteClipboard();
@@ -124,9 +146,11 @@ public class App
 		menuBar.add(menuFile);
 		//子菜单添加到一级菜单
 		//菜单"文件"的子菜单
-		JMenuItem newItem = new JMenuItem("       新建(N)                             Ctrl+N   ");
+		JMenuItem newItem = new JMenuItem("新建(N)");
+		newItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N,InputEvent.CTRL_MASK));//ctrl+N
 		newItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem newWindow = new JMenuItem("       新窗口(W)              Ctrl+Shift+N   ");
+		JMenuItem newWindow = new JMenuItem("新窗口(W)");
+		newWindow.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_W,InputEvent.CTRL_MASK));//Ctrl+W
 		newWindow.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		newWindow.addActionListener(new ActionListener() {
 			//监听 新窗口
@@ -138,13 +162,14 @@ public class App
 					public void run() {
 						// TODO Auto-generated method stub
 						//此处属于时间调度线程
-						createGUI();			
+						createGUI(null);			
 					}
 					
 				});
 			}
 		});
-		JMenuItem openItem = new JMenuItem("       打开(O)                             Ctrl+O   ");
+		JMenuItem openItem = new JMenuItem("打开(O)");
+		openItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O,InputEvent.CTRL_MASK));//ctrl+o
 		openItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		openItem.addActionListener(new ActionListener() {
 			//打开文件
@@ -164,8 +189,57 @@ public class App
 				}
 			}
 		});
+		JMenu history = new JMenu("打开历史 ");
+		history.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
+		List<FileInfo> listFileInfo =  pFrame.getOpenHisttoryFile();
+		for (int i = 0; i < listFileInfo.size(); i++) {
+			HistoryMenuItem hsItem = new HistoryMenuItem(String.format("   %s      ", listFileInfo.get(i).getFileName()));
+			hsItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
+			hsItem.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					if(pFrame.getFileInfo().isNewCreate()) {
+						int result = DialogUtils.showConfirmDialog("是否保存当前文件", pFrame);
+						if(result == JOptionPane.YES_OPTION) {
+							try {
+								pFrame.showFileSaveDialog();
+							} catch (IOException e1) {
+								DialogUtils.alertMessage("保存文件失败", pFrame);
+							}
+							return;
+						}
+					}else if(pFrame.getjTextPane().isChange()) {
+						int result = DialogUtils.showConfirmDialog("是否保存当前改变的内容", pFrame);
+						if(result == JOptionPane.YES_OPTION) {
+							try {
+								pFrame.showFileSaveDialog();
+							} catch (IOException e1) {
+								DialogUtils.alertMessage("保存文件失败", pFrame);
+							}
+						}
+					}
+					HistoryMenuItem source = (HistoryMenuItem)e.getSource();
+					File sourceFile  = new File(source.getIndex());
+					if(sourceFile.exists()) {
+						try {
+							pFrame.readTargetFile(sourceFile);
+						} catch (IOException e1) {
+							// TODO Auto-generated catch block
+							e1.printStackTrace();
+						}
+					}else {
+						DialogUtils.alertMessage("文件不存在", pFrame);
+					}
+				}
+			});
+			hsItem.setIndex(listFileInfo.get(i).getFilePath());
+			history.add(hsItem);
+		}
+		menuFile.add(history);
+		
 		//保存
-		JMenuItem saveItem = new JMenuItem("       保存(S)                             Ctrl+S   ");
+		JMenuItem saveItem = new JMenuItem("保存(S)");
+		saveItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S,InputEvent.CTRL_MASK));//Ctrl+S
 		saveItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		saveItem.addActionListener(new ActionListener() {
 			//监听保存
@@ -183,9 +257,9 @@ public class App
 			}
 		});
 		
-		JMenuItem anotherItem = new JMenuItem("       另存为(A)               Ctrl+Shift+S   ");
+		JMenuItem anotherItem = new JMenuItem("另存为(A)");
 		anotherItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem exitItem = new JMenuItem("       退出");
+		JMenuItem exitItem = new JMenuItem("退出                                   ");
 		exitItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		exitItem.addActionListener(new ActionListener() {
 			
@@ -197,6 +271,7 @@ public class App
 		menuFile.add(newItem);
 		menuFile.add(newWindow);
 		menuFile.add(openItem);
+		menuFile.add(history);
 		menuFile.add(saveItem);
 		menuFile.add(anotherItem);
 		menuFile.addSeparator();
@@ -206,29 +281,30 @@ public class App
 		menuEdit.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		menuBar.add(menuEdit);
 		//菜单"编辑"的子菜单
-		JMenuItem cancelItem = new JMenuItem("       撤销(U)                             Ctrl+Z   ");
+		JMenuItem cancelItem = new JMenuItem("撤销(U)");
+		cancelItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z,InputEvent.CTRL_MASK));// Ctrl+Z
 		cancelItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem cutItem = new JMenuItem("       剪切(T)                             Ctrl+X   ");
+		JMenuItem cutItem = new JMenuItem("剪切(T)");
+		cutItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X,InputEvent.CTRL_MASK));// Ctrl+X
 		cutItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem copyItem = new JMenuItem("       复制(C)                             Ctrl+C   ");
+		JMenuItem copyItem = new JMenuItem("复制(C)");
+		copyItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C,InputEvent.CTRL_MASK));// Ctrl+C
 		copyItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem pasteItem = new JMenuItem("       粘贴(P)                             Ctrl+V   ");
+		JMenuItem pasteItem = new JMenuItem("粘贴(P)                                  ");
+		pasteItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V,InputEvent.CTRL_MASK));// Ctrl+V
 		pasteItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem delItem = new JMenuItem("       删除(L)                                  Del   ");
-		delItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		menuEdit.add(cancelItem);
 		menuEdit.add(cutItem);
 		menuEdit.add(copyItem);
 		menuEdit.add(pasteItem);
-		menuEdit.add(delItem);
 		
 		JMenu menuFormat  = new JMenu("格式(O)");
 		menuFormat.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		menuBar.add(menuFormat);
 		//菜单"格式"子菜单
-		JMenuItem wLineItem = new JMenuItem("       自动换行(W)                 ");
+		JMenuItem wLineItem = new JMenuItem("     自动换行(W)                   ");
 		wLineItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem fontItem = new JMenuItem("       字体(F)                 ");
+		JMenuItem fontItem = new JMenuItem("     字体(F)                   ");
 		fontItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		menuFormat.add(wLineItem);
 		menuFormat.add(fontItem);
@@ -237,9 +313,9 @@ public class App
 		menuView.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		menuBar.add(menuView);
 		//菜单"查看"子菜单
-		JMenuItem zItem = new JMenuItem("       缩放(Z)                 ");
+		JMenuItem zItem = new JMenuItem("     缩放(Z)                   ");
 		zItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem stateItem = new JMenuItem("       状态栏(S)                 ");
+		JMenuItem stateItem = new JMenuItem("     状态栏(S)                   ");
 		stateItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		menuView.add(zItem);
 		menuView.add(stateItem);
@@ -248,11 +324,11 @@ public class App
 		menuHelp.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		menuBar.add(menuHelp);
 		//菜单"帮助"子菜单
-		JMenuItem helpItem = new JMenuItem("       查看帮助(H)                 ");
+		JMenuItem helpItem = new JMenuItem("     查看帮助(H)                 ");
 		helpItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem fItem = new JMenuItem("       发送反馈(F)                 ");
+		JMenuItem fItem = new JMenuItem("     发送反馈(F)                 ");
 		fItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
-		JMenuItem aboutItem = new JMenuItem("       关于记事本(A)                 ");
+		JMenuItem aboutItem = new JMenuItem("     关于记事本(A)                   ");
 		aboutItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		menuHelp.add(helpItem);
 		menuHelp.add(fItem);

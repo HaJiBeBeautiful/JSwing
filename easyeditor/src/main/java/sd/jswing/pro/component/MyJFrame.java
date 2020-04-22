@@ -6,6 +6,8 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
@@ -16,6 +18,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +35,7 @@ import sd.jswing.pro.common.Constants;
 import sd.jswing.pro.common.DialogUtils;
 import sd.jswing.pro.common.FileInfo;
 import sd.jswing.pro.common.FileUtils;
+import sd.jswing.pro.common.XmlOpenhistoryUtil;
 
 public class MyJFrame extends JFrame{
 
@@ -40,6 +44,10 @@ public class MyJFrame extends JFrame{
 	private static String APP_NAME = "笔记本";
 	
 	private MyJTextPane jTextPane;
+	
+	private File targetFile;
+	
+	private List<FileInfo> openHisttoryFile;
 	
 	public MyJTextPane getjTextPane() {
 		return jTextPane;
@@ -66,6 +74,7 @@ public class MyJFrame extends JFrame{
 			}
 		});
 	}
+
 	
 	public FileInfo getFileInfo() {
 		return fileInfo;
@@ -73,6 +82,21 @@ public class MyJFrame extends JFrame{
 
 	public void setFileInfo(FileInfo fileInfo) {
 		this.fileInfo = fileInfo;
+		List<FileInfo> fileInfos = getOpenHisttoryFile();
+		if(null != fileInfos) {
+			boolean cf = false;
+			for(FileInfo info :fileInfos) {
+				if(info.compareTo(fileInfo) > 0) {
+					cf = true;
+					break;
+				}
+			}
+			if(!cf) {
+				fileInfos.add(fileInfo);
+				if(null != fileInfo.getFileName() && null != fileInfo.getFilePath())
+				XmlOpenhistoryUtil.writeXmlFile(fileInfo);
+			}
+		}
 	}
 	
 	//打开文件你
@@ -111,13 +135,13 @@ public class MyJFrame extends JFrame{
 			fileInfo.setNewCreate(false);
 			//fileInfo.setFileContent(textArea.getText());
 			fileInfo.setSuffix(fileInfo.getFilePath().substring(fileInfo.getFilePath().lastIndexOf(".")+1));
-			this.setFileInfo(fileInfo);
-			textArea.setChange(false);
         	if("txt".equals(fileInfo.getSuffix())) {
         		textArea.setText(FileUtils.openFile(file));
         	}else {
         		FileUtils.readStyledDocumentFromFile(file, this,jTextPane);
         	}
+        	this.setFileInfo(fileInfo);
+			textArea.setChange(false);
             return 1;
         }else {
         	return 0;
@@ -323,5 +347,45 @@ public class MyJFrame extends JFrame{
 		}else {
 			this.dispose();
 		}
+	}
+
+	public File getTargetFile() {
+		return targetFile;
+	}
+
+	public void setTargetFile(File targetFile){
+		this.targetFile = targetFile;
+		if(targetFile != null && targetFile.exists()) {
+			this.setTitle(targetFile.getName()+" - "+APP_NAME);
+		}
+	}
+	
+	public void readTargetFile(File targetFile) throws IOException {
+		if(targetFile != null && targetFile.exists()) {
+			FileInfo fileInfo = new FileInfo(); 
+			fileInfo.setFileName(targetFile.getName());
+			fileInfo.setEncoding(Constants.ENCODING_UTF_8);
+			fileInfo.setFilePath(targetFile.getAbsolutePath());
+//			fileInfo.setFileContent(content);
+			fileInfo.setSuffix(fileInfo.getFilePath().substring(fileInfo.getFilePath().lastIndexOf(".")+1));
+			fileInfo.setNewCreate(false);
+        	if("txt".equals(fileInfo.getSuffix())) {
+        		this.getjTextPane().setText(FileUtils.openFile(targetFile));
+        	}else {
+        		FileUtils.readStyledDocumentFromFile(targetFile, this,this.getjTextPane());
+        	}
+        	this.getjTextPane().setChange(false);
+        	this.setFileInfo(fileInfo);
+		}
+	}
+
+	public List<FileInfo> getOpenHisttoryFile() {
+		if(null == openHisttoryFile)
+			return new ArrayList<FileInfo>(0);
+		return openHisttoryFile;
+	}
+
+	public void setOpenHisttoryFile(List<FileInfo> openHisttoryFile) {
+		this.openHisttoryFile = openHisttoryFile;
 	}
 }

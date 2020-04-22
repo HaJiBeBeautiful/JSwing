@@ -1,8 +1,11 @@
 package sd.jswing.pro.common;
+
+import static org.junit.Assert.assertNotNull;
+
 /**
  * 文件信息
  */
-public class FileInfo {
+public class FileInfo implements Comparable<FileInfo>{
 	
 	public FileInfo() {
 	}
@@ -70,5 +73,20 @@ public class FileInfo {
 	}
 	public void setSuffix(String suffix) {
 		this.suffix = suffix;
+	}
+
+	@Override
+	public int compareTo(FileInfo o) {
+		if( null == o )
+			return 0;
+		if(o instanceof FileInfo) {
+			if(null != o.getFileName() && null != o.getFilePath()) {
+				if(o.getFileName().equals(this.getFileName())
+						&& o.getFilePath().equals(this.getFilePath())) {
+					return 1;
+				}
+			}
+		}
+		return 0;
 	}
 }

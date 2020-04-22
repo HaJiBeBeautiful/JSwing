@@ -1,12 +1,16 @@
 package sd.jswing.pro.component;
 
 import java.awt.Font;
+import java.io.File;
+import java.io.IOException;
 
 import javax.swing.JTextPane;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 
 import sd.jswing.pro.common.Constants;
+import sd.jswing.pro.common.FileInfo;
+import sd.jswing.pro.common.FileUtils;
 
 public class MyJTextPane extends  JTextPane{
 	/**
@@ -21,7 +25,6 @@ public class MyJTextPane extends  JTextPane{
 					
 			@Override
 			public void undoableEditHappened(UndoableEditEvent e) {
-				System.out.println("22222");
 				setChange(true);
 			}
 		});
@@ -39,6 +42,4 @@ public class MyJTextPane extends  JTextPane{
 	public void setChange(boolean isChange) {
 		this.isChange = isChange;
 	}
-	
-	
 }
