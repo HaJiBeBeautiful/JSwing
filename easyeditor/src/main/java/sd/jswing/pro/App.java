@@ -1,5 +1,8 @@
 package sd.jswing.pro;
 
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Image;
 import java.awt.Toolkit;
@@ -13,10 +16,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.KeyStroke;
 import javax.swing.ScrollPaneConstants;
@@ -27,9 +33,9 @@ import javax.swing.UnsupportedLookAndFeelException;
 import sd.jswing.pro.common.Constants;
 import sd.jswing.pro.common.DialogUtils;
 import sd.jswing.pro.common.FileInfo;
-import sd.jswing.pro.common.FileUtils;
 import sd.jswing.pro.common.XmlOpenhistoryUtil;
 import sd.jswing.pro.component.HistoryMenuItem;
+import sd.jswing.pro.component.LineNr;
 import sd.jswing.pro.component.MyJFrame;
 import sd.jswing.pro.component.MyJTextPane;
 
@@ -71,38 +77,46 @@ public class App
 		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException
 				| UnsupportedLookAndFeelException e1) {
 		}
-		//此处属于 时间调度线程
+		
 		MyJFrame jf = new MyJFrame();
 		jf.setOpenHisttoryFile(XmlOpenhistoryUtil.loadXmlFile());
+		Image icon = Toolkit.getDefaultToolkit().getImage(jf.getClass().getResource("/images/logo.gif"));
+		jf.setIconImage(icon);
 		//创建菜单栏
 		createMenuBar(jf);
 		//创建滚动内容版
 		jf.setTargetFile(file);
 		createJScrollAreaText(jf);
-		
 		jf.setVisible(true);
 	}
 	
 	
 	//创建内容面板
 	public static void createJScrollAreaText(MyJFrame pFrame) {
-		Image icon = Toolkit.getDefaultToolkit().getImage(pFrame.getClass().getResource("/images/logo.gif"));
-		pFrame.setIconImage(icon);
-		MyJTextPane text = new MyJTextPane();
-		JScrollPane pane = new JScrollPane( 
-				text,
+		MyJTextPane contentPanel = new MyJTextPane();
+		JScrollPane scrollPael = new JScrollPane( 
+				contentPanel,
 				ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, //垂直滚动条的显示策略
 				ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED); //水平滚动条的显示策略
+		scrollPael.setBorder(BorderFactory.createMatteBorder(1, 1, 0, 1,new Color(200,200,200)));
+		JPanel borderPanel = new JPanel(new BorderLayout());
+		LineNr lineNumber = new LineNr(scrollPael);
+		contentPanel.setLineNumber(lineNumber);
+		borderPanel.add(lineNumber,BorderLayout.WEST);
+		borderPanel.add(scrollPael,BorderLayout.CENTER);
+		JPanel bottomPl = new JPanel();
+		bottomPl.add(new JLabel("底部"));
+		borderPanel.add(bottomPl,BorderLayout.SOUTH);
 		
-		pFrame.setContentPane(pane); //设置到窗口
-		pFrame.setjTextPane(text);
+		pFrame.setContentPane(borderPanel); //设置到窗口
+		pFrame.setjTextPane(contentPanel);
 		try {
 			pFrame.readTargetFile(pFrame.getTargetFile());
 		} catch (IOException e1) {
 			DialogUtils.alertMessage("文件读取失败", pFrame);
 		}
 		//添加键盘监听事件
-		text.addKeyListener(new KeyListener() {
+		contentPanel.addKeyListener(new KeyListener() {
 			//有字符输入触发
 			@Override
 			public void keyTyped(KeyEvent e) {
@@ -175,8 +189,7 @@ public class App
 			//打开文件
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JScrollPane jScrollPane =  (JScrollPane)pFrame.getContentPane();
-				MyJTextPane text =  (MyJTextPane)jScrollPane.getViewport().getView();
+				MyJTextPane text =  pFrame.getjTextPane();
 				if(null != text) {
 					try {
 						pFrame.showFileOpenDialog();
@@ -245,8 +258,7 @@ public class App
 			//监听保存
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				JScrollPane jScrollPane =  (JScrollPane)pFrame.getContentPane();
-				MyJTextPane text =  (MyJTextPane)jScrollPane.getViewport().getView();
+				MyJTextPane text =  pFrame.getjTextPane();
 				if(null != text) {
 					try {
 						pFrame.showFileSaveDialog();

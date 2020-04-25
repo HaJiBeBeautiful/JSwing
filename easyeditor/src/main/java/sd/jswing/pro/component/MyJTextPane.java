@@ -1,6 +1,8 @@
 package sd.jswing.pro.component;
 
+import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics;
 import java.io.File;
 import java.io.IOException;
 
@@ -18,6 +20,8 @@ public class MyJTextPane extends  JTextPane{
 	 */
 	private static final long serialVersionUID = 1L;
 	
+	private LineNr lineNumber;
+	
 	public MyJTextPane() {
 		this.setFont(new Font(null, Font.PLAIN,Constants.Font.TextAREA_FONT_SIZE));
 		//文本改变 监听器
@@ -28,6 +32,15 @@ public class MyJTextPane extends  JTextPane{
 				setChange(true);
 			}
 		});
+	}
+	
+	@Override
+	public void paint(Graphics g) {
+		// TODO Auto-generated method stub
+		super.paint(g);
+		if(null != lineNumber) {
+			lineNumber.repaint();
+		}
 	}
 	
 	/**
@@ -41,5 +54,9 @@ public class MyJTextPane extends  JTextPane{
 
 	public void setChange(boolean isChange) {
 		this.isChange = isChange;
+	}
+
+	public void setLineNumber(LineNr lineNumber) {
+		this.lineNumber = lineNumber;
 	}
 }

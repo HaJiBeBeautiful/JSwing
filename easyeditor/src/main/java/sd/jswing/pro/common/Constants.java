@@ -19,6 +19,8 @@ public class Constants {
 		 * 文本内容字体大小
 		 */
 		public static final int TextAREA_FONT_SIZE = 20;
+		
+		public static final int FONT_MINI_SIZE = 16;
 	}
 	/**
 	 * 键盘按键值
