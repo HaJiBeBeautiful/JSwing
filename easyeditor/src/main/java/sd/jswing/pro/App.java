@@ -29,6 +29,8 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
+import javax.swing.text.BadLocationException;
+import javax.swing.undo.UndoManager;
 
 import sd.jswing.pro.common.Constants;
 import sd.jswing.pro.common.DialogUtils;
@@ -80,7 +82,7 @@ public class App
 		
 		MyJFrame jf = new MyJFrame();
 		jf.setOpenHisttoryFile(XmlOpenhistoryUtil.loadXmlFile());
-		Image icon = Toolkit.getDefaultToolkit().getImage(jf.getClass().getResource("/images/logo.gif"));
+		Image icon = Toolkit.getDefaultToolkit().getImage(jf.getClass().getResource("/images/favicon.jpg"));
 		jf.setIconImage(icon);
 		//创建菜单栏
 		createMenuBar(jf);
@@ -100,9 +102,9 @@ public class App
 				ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED); //水平滚动条的显示策略
 		scrollPael.setBorder(BorderFactory.createMatteBorder(1, 1, 0, 1,new Color(200,200,200)));
 		JPanel borderPanel = new JPanel(new BorderLayout());
-		LineNr lineNumber = new LineNr(scrollPael);
+		/*LineNr lineNumber = new LineNr(scrollPael);
 		contentPanel.setLineNumber(lineNumber);
-		borderPanel.add(lineNumber,BorderLayout.WEST);
+		borderPanel.add(lineNumber,BorderLayout.WEST);*/
 		borderPanel.add(scrollPael,BorderLayout.CENTER);
 		JPanel bottomPl = new JPanel();
 		bottomPl.add(new JLabel("底部"));
@@ -124,6 +126,7 @@ public class App
 				//System.out.println(e.getKeyCode());
 				if (e.getModifiers() != 2) {
 					pFrame.getjTextPane().setChange(true);
+					pFrame.setTitleChange();
 				}
 			}
 			//按键弹起触发
@@ -139,12 +142,14 @@ public class App
 					if(e.getKeyCode() == Constants.KeyCode.KEY_V){
 						//System.out.println("CTRL+V......");
 						//粘貼
-						pFrame.pasteClipboard();
+						pFrame.pasteClipboard(1);
 					}
 				}
 				
 			}
 		});
+		
+		
 	}
 	
 
@@ -163,6 +168,33 @@ public class App
 		JMenuItem newItem = new JMenuItem("新建(N)");
 		newItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N,InputEvent.CTRL_MASK));//ctrl+N
 		newItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
+		newItem.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(pFrame.getFileInfo().isNewCreate()) {
+					int result = DialogUtils.showConfirmDialog("是否保存当前文件", pFrame);
+					if(result == JOptionPane.YES_OPTION) {
+						try {
+							pFrame.showFileSaveDialog(Constants.SaveModel.SAVE);
+						} catch (IOException e1) {
+							DialogUtils.alertMessage("保存文件失败", pFrame);
+						}
+						return;
+					}
+				}else if(pFrame.getjTextPane().isChange()) {
+					int result = DialogUtils.showConfirmDialog("是否保存当前改变的内容", pFrame);
+					if(result == JOptionPane.YES_OPTION) {
+						try {
+							pFrame.showFileSaveDialog(Constants.SaveModel.SAVE);
+						} catch (IOException e1) {
+							DialogUtils.alertMessage("保存文件失败", pFrame);
+						}
+					}
+				}
+				pFrame.clearContent();
+			}
+		});
 		JMenuItem newWindow = new JMenuItem("新窗口(W)");
 		newWindow.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_W,InputEvent.CTRL_MASK));//Ctrl+W
 		newWindow.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
@@ -215,7 +247,7 @@ public class App
 						int result = DialogUtils.showConfirmDialog("是否保存当前文件", pFrame);
 						if(result == JOptionPane.YES_OPTION) {
 							try {
-								pFrame.showFileSaveDialog();
+								pFrame.showFileSaveDialog(Constants.SaveModel.SAVE);
 							} catch (IOException e1) {
 								DialogUtils.alertMessage("保存文件失败", pFrame);
 							}
@@ -225,7 +257,7 @@ public class App
 						int result = DialogUtils.showConfirmDialog("是否保存当前改变的内容", pFrame);
 						if(result == JOptionPane.YES_OPTION) {
 							try {
-								pFrame.showFileSaveDialog();
+								pFrame.showFileSaveDialog(Constants.SaveModel.SAVE);
 							} catch (IOException e1) {
 								DialogUtils.alertMessage("保存文件失败", pFrame);
 							}
@@ -241,6 +273,7 @@ public class App
 							e1.printStackTrace();
 						}
 					}else {
+						pFrame.removeHistory(source.getIndex());
 						DialogUtils.alertMessage("文件不存在", pFrame);
 					}
 				}
@@ -261,7 +294,7 @@ public class App
 				MyJTextPane text =  pFrame.getjTextPane();
 				if(null != text) {
 					try {
-						pFrame.showFileSaveDialog();
+						pFrame.showFileSaveDialog(Constants.SaveModel.SAVE);
 					} catch (IOException e2) {
 						DialogUtils.alertMessage("新建文件异常", pFrame);
 					}
@@ -271,6 +304,17 @@ public class App
 		
 		JMenuItem anotherItem = new JMenuItem("另存为(A)");
 		anotherItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
+		anotherItem.addActionListener(new ActionListener() {
+			//监听另存为
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				try {
+					pFrame.showFileSaveDialog(Constants.SaveModel.ANOTHER);
+				} catch (IOException e2) {
+					DialogUtils.alertMessage("新建文件异常", pFrame);
+				}
+			}
+		});
 		JMenuItem exitItem = new JMenuItem("退出                                   ");
 		exitItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
 		exitItem.addActionListener(new ActionListener() {
@@ -296,15 +340,60 @@ public class App
 		JMenuItem cancelItem = new JMenuItem("撤销(U)");
 		cancelItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z,InputEvent.CTRL_MASK));// Ctrl+Z
 		cancelItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
+		cancelItem.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MyJTextPane text =  pFrame.getjTextPane();
+				UndoManager manager = text.getUndoManager();
+				if(manager.canUndo()) {
+					manager.undo();
+				}
+			}
+		});
 		JMenuItem cutItem = new JMenuItem("剪切(T)");
 		cutItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X,InputEvent.CTRL_MASK));// Ctrl+X
 		cutItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
+		cutItem.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MyJTextPane text =  pFrame.getjTextPane();
+				if(null != text.getSelectedText()) {
+					pFrame.copyClipboard(text.getSelectedText());
+					try {
+						int p0 = text.getSelectionStart();
+						text.getDocument().remove(p0,text.getSelectedText().length());
+					} catch (BadLocationException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+				}
+			}
+		});
 		JMenuItem copyItem = new JMenuItem("复制(C)");
 		copyItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C,InputEvent.CTRL_MASK));// Ctrl+C
 		copyItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
+		copyItem.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MyJTextPane text =  pFrame.getjTextPane();
+				if(null != text.getSelectedText()) {
+					pFrame.copyClipboard(text.getSelectedText());
+				}
+			}
+		});
 		JMenuItem pasteItem = new JMenuItem("粘贴(P)                                  ");
 		pasteItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_V,InputEvent.CTRL_MASK));// Ctrl+V
 		pasteItem.setFont(new Font(null, Font.PLAIN, Constants.Font.MENUBAR_FONT_SIZE));
+		pasteItem.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				pFrame.pasteClipboard(2);
+			}
+		});
 		menuEdit.add(cancelItem);
 		menuEdit.add(cutItem);
 		menuEdit.add(copyItem);

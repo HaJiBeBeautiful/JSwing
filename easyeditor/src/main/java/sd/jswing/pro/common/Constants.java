@@ -45,11 +45,11 @@ public class Constants {
 	/**
 	 * 文件打开模式
 	 */
-	public static class FileModel{
+	public static class SaveModel{
 		//新建
-		public static final int NEW = 1;
+		public static final int SAVE = 1;
 		//打开
-		public static final int OPEN = 1;
+		public static final int ANOTHER = 2;
 	}
 	
 	public static class PictureFormat{

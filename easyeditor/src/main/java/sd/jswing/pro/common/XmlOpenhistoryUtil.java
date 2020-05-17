@@ -82,6 +82,40 @@ public class XmlOpenhistoryUtil {
 		writeDocument(document,docFile);
 	}
 	
+	public static void removeFileNodeByName(String fileName) {
+		List<FileInfo> listFile = new ArrayList<FileInfo>();
+		List<Node> listFileNode =  document.selectNodes("/files/file");
+		for(Node fileNode :listFileNode) {
+			Element fileEle = (Element)fileNode;
+			Element nameEle = fileEle.element("name");
+			if(nameEle.getTextTrim().equals(fileName)) {
+				Element root = document.getRootElement();
+				root.remove(fileNode);
+				//回写xml
+				File docFile = new File(XmlOpenhistoryUtil.class.getResource("/").getPath()+OUT_DIRECT+XML_PATH);
+				writeDocument(document,docFile);
+				break;
+			}
+		}
+	}
+	
+	public static void removeFileNodeByPath(String filePath) {
+		List<FileInfo> listFile = new ArrayList<FileInfo>();
+		List<Node> listFileNode =  document.selectNodes("/files/file");
+		for(Node fileNode :listFileNode) {
+			Element fileEle = (Element)fileNode;
+			Element pathEle = fileEle.element("path");
+			if(pathEle.getTextTrim().equals(filePath)) {
+				Element root = document.getRootElement();
+				root.remove(fileNode);
+				//回写xml
+				File docFile = new File(XmlOpenhistoryUtil.class.getResource("/").getPath()+OUT_DIRECT+XML_PATH);
+				writeDocument(document,docFile);
+				break;
+			}
+		}
+	}
+	
 	public static void writeDocument(Document doc,File out) {
 		try {
 	    	OutputFormat format = OutputFormat.createPrettyPrint();

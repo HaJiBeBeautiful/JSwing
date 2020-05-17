@@ -4,6 +4,7 @@ import java.awt.Dimension;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.ActionEvent;
@@ -30,6 +31,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.filechooser.FileSystemView;
+import javax.swing.text.StyledDocument;
 
 import sd.jswing.pro.common.Constants;
 import sd.jswing.pro.common.DialogUtils;
@@ -41,7 +43,7 @@ public class MyJFrame extends JFrame{
 
 	private FileInfo fileInfo;
 	
-	private static String APP_NAME = "笔记本";
+	private static String APP_NAME = "%s - 笔记本%s";
 	
 	private MyJTextPane jTextPane;
 	
@@ -55,10 +57,11 @@ public class MyJFrame extends JFrame{
 
 	public void setjTextPane(MyJTextPane jTextPane) {
 		this.jTextPane = jTextPane;
+		this.jTextPane.setpFrame(this);
 	}
 
 	public MyJFrame() {
-		this(APP_NAME);
+		this(String.format(APP_NAME,"新建",""));
 	}
 	
 	public MyJFrame(String name) {
@@ -73,6 +76,14 @@ public class MyJFrame extends JFrame{
 				closeWindow();
 			}
 		});
+	}
+	
+	public void setTitleChange() {
+		String title = "新建";
+		if(null != fileInfo.getFileName()) {
+			title = fileInfo.getFileName();
+		}
+		this.setTitle(String.format(APP_NAME, title,"*"));
 	}
 
 	
@@ -99,13 +110,24 @@ public class MyJFrame extends JFrame{
 		}
 	}
 	
+	public void clearContent() {
+		jTextPane.setText("");
+		FileInfo fileInfo = new FileInfo();
+		fileInfo.setNewCreate(true);
+		fileInfo.setEncoding(Constants.ENCODING_UTF_8);
+		setFileInfo(fileInfo);
+		setTargetFile(null);
+		jTextPane.setChange(false);
+		this.setTitle(String.format(APP_NAME, "新建",""));
+	}
+	
 	//打开文件你
 	public int showFileOpenDialog() throws IOException,FileNotFoundException {
 		MyJTextPane textArea = this.getjTextPane();
 		//打开新文件前 先保存当前文本内容
     	if(textArea.isChange()
     			&& DialogUtils.showConfirmDialog("是否保存文件内容", this) == JOptionPane.YES_OPTION) {
-    		this.showFileSaveDialog();
+    		this.showFileSaveDialog(Constants.SaveModel.SAVE);
     		return 0;
     	}
     	
@@ -126,7 +148,7 @@ public class MyJFrame extends JFrame{
             
             // 如果允许选择多个文件, 则通过下面方法获取选择的所有文件
             // File[] files = fileChooser.getSelectedFiles();
-            this.setTitle(file.getName()+" - "+APP_NAME);
+            this.setTitle(String.format(APP_NAME,file.getName(),""));
           //新建一個跟打開文件對應的FileInfo對象
             FileInfo fileInfo = new FileInfo();
             fileInfo.setFileName(file.getName());
@@ -142,6 +164,7 @@ public class MyJFrame extends JFrame{
         	}
         	this.setFileInfo(fileInfo);
 			textArea.setChange(false);
+			this.setTitle(String.format(APP_NAME,fileInfo.getFileName(),""));
             return 1;
         }else {
         	return 0;
@@ -149,10 +172,10 @@ public class MyJFrame extends JFrame{
 	}
 	
 	//保存编辑文本
-	public int showFileSaveDialog() throws IOException {
+	public int showFileSaveDialog(int mode) throws IOException {
 		MyJTextPane text = this.getjTextPane();
 		FileInfo fileInfo = this.getFileInfo();
-		if(fileInfo.isNewCreate()) {
+		if(fileInfo.isNewCreate() || mode == Constants.SaveModel.ANOTHER) {
 			//创建一个默认的文件选择器
 			FileSystemView  fileSystemView = FileSystemView.getFileSystemView();
 			JFileChooser fileChooser = new JFileChooser();
@@ -194,7 +217,7 @@ public class MyJFrame extends JFrame{
 					fileInfo.setNewCreate(false);
 				}
 				text.setChange(false);
-				this.setTitle(saveFile.getName()+" - "+APP_NAME);
+				this.setTitle(String.format(APP_NAME,saveFile.getName(),""));
 				if("txt".equals(fileInfo.getSuffix())) {
 					FileUtils.saveFile(saveFile, text.getText());
 				}else {
@@ -218,16 +241,27 @@ public class MyJFrame extends JFrame{
 				FileUtils.saveStyledDocumentAsFile(file,jTextPane);
 			}
 			text.setChange(false);
+			this.setTitle(String.format(APP_NAME,file.getName(),""));
 			return 1;
 		}
 	}
 	
 	
+	public void copyClipboard(String content) {
+		// 获取系统剪贴板	
+		Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
+		// 封装文本内容
+        Transferable trans = new StringSelection(content);
+        // 把文本内容设置到系统剪贴板
+        clipboard.setContents(trans, null);
+        
+	}
+	
 	/**
 	 * 粘貼操作
 	 * @param jframe
 	 */
-	public void pasteClipboard() {
+	public void pasteClipboard(int model) {
 		MyJTextPane jTextArea = this.getjTextPane();
 		int insertPosition = jTextArea.getCaretPosition();
 		// 获取系统剪贴板
@@ -237,12 +271,12 @@ public class MyJFrame extends JFrame{
         
         if (trans != null) {
             // 判断剪贴板中的内容是否支持文本
-            if (trans.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+            if (trans.isDataFlavorSupported(DataFlavor.stringFlavor) && model==2) {
                 try {
                     // 获取剪贴板中的文本内容
-                    //String text = (String) trans.getTransferData(DataFlavor.stringFlavor);
-                    //StyledDocument doc = jTextArea.getStyledDocument();
-                    //doc.insertString(insertPosition, text, a);
+                    String text = (String) trans.getTransferData(DataFlavor.stringFlavor);
+                    StyledDocument doc = jTextArea.getStyledDocument();
+                    doc.insertString(insertPosition, text,null);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -334,7 +368,7 @@ public class MyJFrame extends JFrame{
 			int result = DialogUtils.showConfirmDialog("是否保存已改变的内容", this);
 			if(result == JOptionPane.YES_OPTION) {
 				try {
-					int flag =  showFileSaveDialog();
+					int flag =  showFileSaveDialog(Constants.SaveModel.SAVE);
 					if(flag == 1) {
 						this.dispose();
 					}
@@ -356,7 +390,7 @@ public class MyJFrame extends JFrame{
 	public void setTargetFile(File targetFile){
 		this.targetFile = targetFile;
 		if(targetFile != null && targetFile.exists()) {
-			this.setTitle(targetFile.getName()+" - "+APP_NAME);
+			this.setTitle(String.format(APP_NAME,targetFile.getName(),""));
 		}
 	}
 	
@@ -376,6 +410,7 @@ public class MyJFrame extends JFrame{
         	}
         	this.getjTextPane().setChange(false);
         	this.setFileInfo(fileInfo);
+        	this.setTitle(String.format(APP_NAME, targetFile.getName(),""));
 		}
 	}
 
@@ -387,5 +422,21 @@ public class MyJFrame extends JFrame{
 
 	public void setOpenHisttoryFile(List<FileInfo> openHisttoryFile) {
 		this.openHisttoryFile = openHisttoryFile;
+	}
+	
+	public void removeHistory(String filePath) {
+		if(null == filePath)
+			return;
+		if(null == openHisttoryFile)
+			return;
+		for(FileInfo fileInfo : openHisttoryFile) {
+			if(null == fileInfo.getFilePath())
+				continue;
+			if(filePath.equals(fileInfo.getFilePath().trim())) {
+				openHisttoryFile.remove(fileInfo);
+				XmlOpenhistoryUtil.removeFileNodeByPath(filePath);
+				break;
+			}
+		}
 	}
 }
