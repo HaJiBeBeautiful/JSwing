@@ -298,7 +298,10 @@ public class MyJFrame extends JFrame{
 							//ImageIO.write(image,Constants.PictureFormat.JPG,new File(imagefile,imageName)); 
 							
 							//jTextArea.insertIcon(new ImageIcon(imagefile.getPath()+"/"+imageName));
-							jTextArea.insertIcon(new ImageIcon(image));
+							ImageIcon icon =  new ImageIcon(image);
+							
+							icon.setDescription(String.format("宽:%d 高:%d", image.getWidth(),image.getHeight()));
+							jTextArea.insertIcon(icon);
 						}
 					}
 				} catch (UnsupportedFlavorException | IOException e) {

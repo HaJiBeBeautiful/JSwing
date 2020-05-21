@@ -9,6 +9,8 @@ import java.text.BreakIterator;
 
 import javax.swing.JTextPane;
 import javax.swing.SizeRequirements;
+import javax.swing.event.AncestorEvent;
+import javax.swing.event.AncestorListener;
 import javax.swing.event.UndoableEditEvent;
 import javax.swing.event.UndoableEditListener;
 import javax.swing.text.AbstractDocument;
@@ -88,6 +90,7 @@ public class MyJTextPane extends  JTextPane{
                 } else if (kind.equals(StyleConstants.ComponentElementName)) {  
                     return new ComponentView(elem);  
                 } else if (kind.equals(StyleConstants.IconElementName)) {  
+                	
                     return new WarpIconView(elem);  
                 }  
             }  
@@ -142,6 +145,26 @@ public class MyJTextPane extends  JTextPane{
 		//文本改变 监听器
 		this.undoManager = new UndoManagerExtend();
 		this.getDocument().addUndoableEditListener(this.undoManager);
+		this.addAncestorListener(new AncestorListener() {
+			
+			@Override
+			public void ancestorRemoved(AncestorEvent event) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void ancestorMoved(AncestorEvent event) {
+				// TODO Auto-generated method stub
+				
+			}
+			
+			@Override
+			public void ancestorAdded(AncestorEvent event) {
+				// TODO Auto-generated method stub
+				
+			}
+		});
 	}
 	
 	@Override
